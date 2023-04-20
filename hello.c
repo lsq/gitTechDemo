@@ -5,7 +5,27 @@
 
 int main(int argc, char* argv[])
 {
-  printf("hello, lsq!\n");
+	int i,array[20]={1,1};
+	
+	printf("hello, lsq!\n");
 
-  return 0;
+	for (i=2; i<20; i++)
+
+		{
+
+			array[i]=array[i-2]+array[i-1];
+
+		}
+
+	for (i = 0; i<20; i++)
+
+		{
+
+			printf("%d ",array[i]);
+
+		}
+
+	printf("\n");
+
+	return 0;
 }
