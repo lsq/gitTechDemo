@@ -1,5 +1,5 @@
-all: hello.c
-	gcc -o hl hello.c
+all: numbers.c
+	gcc -o nbers numbers.c
 
 clean:
-	rm -rf hl*
+	rm -rf nbers*
