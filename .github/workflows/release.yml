@@ -11,8 +11,8 @@ name: release
 jobs:
   release_windows_installer:
     name: 'Windows ${{matrix.quantum}}${{matrix.hdri_flag}}-${{matrix.platform}} (${{matrix.type}})'
-    #needs:
-    #  - change_log
+#   needs:
+#     - change_log
     runs-on: windows-2022
 
     strategy:
@@ -118,26 +118,26 @@ jobs:
         nmake
         nmake release
 
-        #    - name: Sign binaries
-        #      uses: dlemstra/code-sign-action@v1
-        #      with:
-        #        certificate: '${{ secrets.CERTIFICATE }}'
-        #        password: '${{ secrets.CERTIFICATE_PASSWORD }}'
-        #        folder: 'ImageMagick-Windows\VisualMagick\bin'
-        #
+#    - name: Sign binaries
+#      uses: dlemstra/code-sign-action@v1
+#      with:
+#        certificate: '${{ secrets.CERTIFICATE }}'
+#        password: '${{ secrets.CERTIFICATE_PASSWORD }}'
+#        folder: 'ImageMagick-Windows\VisualMagick\bin'
+#
     - name: Create installer
       shell: cmd
       run: |
         call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat"
         "C:\Program Files (x86)\Inno Setup 6\iscc.exe" ImageMagick-Windows\VisualMagick\installer\im-${{matrix.platform}}${{matrix.hdri_flag}}-${{matrix.type}}-${{matrix.quantum}}.iss
 
-        #    - name: Sign installer
-        #      uses: dlemstra/code-sign-action@v1
-        #      with:
-        #        certificate: '${{ secrets.CERTIFICATE }}'
-        #        password: '${{ secrets.CERTIFICATE_PASSWORD }}'
-        #        folder: 'ImageMagick-Windows\VisualMagick\installer\output'
-        #
+#    - name: Sign installer
+#      uses: dlemstra/code-sign-action@v1
+#      with:
+#        certificate: '${{ secrets.CERTIFICATE }}'
+#        password: '${{ secrets.CERTIFICATE_PASSWORD }}'
+#        folder: 'ImageMagick-Windows\VisualMagick\installer\output'
+#
     - uses: actions/upload-artifact@v3
       with:
         name: installers
