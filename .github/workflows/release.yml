@@ -1,0 +1,144 @@
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - main
+    paths:
+    - 'configure'
+    - 'm4/version.m4'
+
+name: release
+jobs:
+  release_windows_installer:
+    name: 'Windows ${{matrix.quantum}}${{matrix.hdri_flag}}-${{matrix.platform}} (${{matrix.type}})'
+    #needs:
+    #  - change_log
+    runs-on: windows-2022
+
+    strategy:
+      fail-fast: false
+      matrix:
+#        platform: [ x64, arm64, x86 ]
+        platform: [ x64]
+        type: [ dll, static ]
+        quantum: [ Q8, Q16 ]
+        hdri: [ HDRI, noHDRI ]
+        exclude:
+          - quantum: Q8
+            hdri: HDRI
+        include:
+          - platform: x64
+            bit: 64
+          - type: dll
+            type_flag: dmt
+          - type: static
+            type_flag: smtd
+          - hdri: HDRI
+            hdri_flag: '-HDRI'
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        repository: ImageMagick/ImageMagick-Windows
+        path: ImageMagick-Windows
+        ref: refs/heads/main
+
+    - name: Clone repositories
+      shell: cmd
+      run: |
+        cd ImageMagick-Windows
+        powershell Invoke-WebRequest -Uri https://github.com/mbuilov/sed-windows/releases/download/sed-4.9/sed-4.9-{matrix.bit}.exe -OutFile sed.exe
+        sed -i "20i if [[ $3==\"ImageMagick\" ]]; then branch=7.1.0-24;fi" CloneRepositories.sh
+        #copy /Y sed.exe ImageMagick-Windows\VisualMagick\bin
+        CloneRepositories.cmd https://github.com/ImageMagick shallow
+
+#    - name: Download ChangeLog.md
+#      uses: actions/download-artifact@v3
+#      with:
+#        name: ChangeLog
+#        path: ImageMagick-Windows\ImageMagick
+
+    - name: Download FFmpeg and sed
+      shell: cmd
+      run: |
+        powershell Invoke-WebRequest -Uri https://github.com/ImageMagick/ImageMagick-Windows/releases/download/20200615/ffmpeg-4.2.3-win${{matrix.bit}}.exe -OutFile ffmpeg.exe
+        copy /Y ffmpeg.exe ImageMagick-Windows\VisualMagick\bin
+
+    - name: Download hp2xx
+      shell: cmd
+      run: |
+        powershell Invoke-WebRequest -Uri https://github.com/ImageMagick/ImageMagick-Windows/releases/download/20200615/hp2xx.exe -OutFile hp2xx.exe
+        copy /Y hp2xx.exe ImageMagick-Windows\VisualMagick\bin
+
+    - name: Install Strawberry Perl
+      if: ${{matrix.type == 'dll' && matrix.platform != 'arm64'}}
+      shell: cmd
+      run: |
+        powershell Invoke-WebRequest -Uri https://github.com/ImageMagick/ImageMagick-Windows/releases/download/20200615/strawberry-perl-5.30.2.1-${{matrix.bit}}bit.msi -OutFile strawberry-perl-5.32.1.1-${{matrix.bit}}bit.msi
+        msiexec /i strawberry-perl-5.32.1.1-${{matrix.bit}}bit.msi /qn INSTALLDIR="C:\Strawberry${{matrix.bit}}"
+        mv "C:\Strawberry" "C:\Strawberry64"
+
+    - name: Install Inno Setup
+      shell: cmd
+      run: |
+        powershell Invoke-WebRequest -Uri https://github.com/ImageMagick/ImageMagick-Windows/releases/download/20200615/innosetup-6.2.0.exe -OutFile innosetup-6.2.0.exe
+        innosetup-6.2.0.exe /SILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+
+    - name: Build configure
+      shell: cmd
+      run: |
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat"
+        cd ImageMagick-Windows\VisualMagick\configure
+        msbuild configure.2022.sln /m /t:Rebuild /p:Configuration=Release,Platform=x64
+
+    - name: Configure ImageMagick
+      shell: cmd
+      run: |
+        cd ImageMagick-Windows\VisualMagick\configure
+        configure.exe /noWizard /VS2022 /includeOptional /installedSupport /deprecated /${{matrix.hdri}} /${{matrix.quantum}} /${{matrix.platform}} /${{matrix.type_flag}}
+
+    - name: Build ImageMagick
+      shell: cmd
+      run: |
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat"
+        cd ImageMagick-Windows\VisualMagick
+        set /p solution=<solution
+        msbuild %solution% /m /t:Rebuild /p:Configuration=Release,Platform=${{matrix.platform}}
+
+    - name: Build PerlMagick
+      if: ${{matrix.type == 'dll' && matrix.platform != 'arm64'}}
+      shell: cmd
+      run: |
+        set PATH=
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat"
+        cd ImageMagick-Windows\ImageMagick\PerlMagick
+        set PATH=%PATH%;C:\Strawberry${{matrix.bit}}\c\bin;C:\Strawberry${{matrix.bit}}\perl\site\bin;C:\Strawberry${{matrix.bit}}\perl\bin;C:\WINDOWS\System32\WindowsPowerShell\v1.0
+        perl "Makefile.PL" "MAKE=nmake"
+        nmake
+        nmake release
+
+        #    - name: Sign binaries
+        #      uses: dlemstra/code-sign-action@v1
+        #      with:
+        #        certificate: '${{ secrets.CERTIFICATE }}'
+        #        password: '${{ secrets.CERTIFICATE_PASSWORD }}'
+        #        folder: 'ImageMagick-Windows\VisualMagick\bin'
+        #
+    - name: Create installer
+      shell: cmd
+      run: |
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat"
+        "C:\Program Files (x86)\Inno Setup 6\iscc.exe" ImageMagick-Windows\VisualMagick\installer\im-${{matrix.platform}}${{matrix.hdri_flag}}-${{matrix.type}}-${{matrix.quantum}}.iss
+
+        #    - name: Sign installer
+        #      uses: dlemstra/code-sign-action@v1
+        #      with:
+        #        certificate: '${{ secrets.CERTIFICATE }}'
+        #        password: '${{ secrets.CERTIFICATE_PASSWORD }}'
+        #        folder: 'ImageMagick-Windows\VisualMagick\installer\output'
+        #
+    - uses: actions/upload-artifact@v3
+      with:
+        name: installers
+        path: 'ImageMagick-Windows\VisualMagick\installer\output'
+
