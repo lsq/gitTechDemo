@@ -48,7 +48,7 @@ jobs:
       run: |
         cd ImageMagick-Windows
         powershell Invoke-WebRequest -Uri https://github.com/mbuilov/sed-windows/releases/download/sed-4.9/sed-4.9-${matrix.bit}.exe -OutFile sed.exe
-        sed -i "20i if [[ $3==\"ImageMagick\" ]]; then branch=7.1.0-24;fi" CloneRepositories.sh
+        sed -i "20i if [[ $3 == \"ImageMagick\" ]]; then branch=7.1.0-24;fi" CloneRepositories.sh
         sed -n "1,$p" CloneRepositories.sh
         CloneRepositories.cmd https://github.com/ImageMagick shallow
 
