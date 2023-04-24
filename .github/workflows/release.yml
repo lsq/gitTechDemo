@@ -9,6 +9,34 @@ on:
 
 name: release
 jobs:
+  build_msys2:
+    name: Build MSYS2
+    runs-on: windows-latest
+
+    steps:
+    - name: Prepare git
+      run: git config --global core.autocrlf false
+
+    - uses: actions/checkout@v3
+
+    - uses: actions/checkout@v3
+      with:
+        repository: ImageMagick/ImageMagick-Windows
+        path: ImageMagick-Windows
+        ref: refs/heads/main
+
+    - uses: msys2/setup-msys2@v2
+      with:
+        install: mingw-w64-x86_64-toolchain base-devel binutils
+        update: true
+
+    - name: Building ImageMagick
+      run: cd ImageMagick-Windows && makepkg-mingw --noconfirm --syncdeps
+      env:
+        MINGW_ARCH: mingw64
+        PKGEXT: ".pkg.tar.xz"
+      shell: msys2 {0}
+
   release_windows_installer:
     name: 'Windows ${{matrix.quantum}}${{matrix.hdri_flag}}-${{matrix.platform}} (${{matrix.type}})'
 #   needs:
@@ -142,4 +170,3 @@ jobs:
       with:
         name: installers
         path: 'ImageMagick-Windows\VisualMagick\installer\output'
-
