@@ -3,9 +3,9 @@ on:
   push:
     branches:
     - main
-    paths:
-    - 'configure'
-    - 'm4/version.m4'
+#    paths:
+#    - 'configure'
+#    - 'm4/version.m4'
 
 name: release
 jobs:
@@ -49,7 +49,8 @@ jobs:
         cd ImageMagick-Windows
         powershell Invoke-WebRequest -Uri https://github.com/mbuilov/sed-windows/releases/download/sed-4.9/sed-4.9-{matrix.bit}.exe -OutFile sed.exe
         sed -i "20i if [[ $3==\"ImageMagick\" ]]; then branch=7.1.0-24;fi" CloneRepositories.sh
-        #copy /Y sed.exe ImageMagick-Windows\VisualMagick\bin
+        sed -n "1,$p" CloneRepositories.sh
+#        copy /Y sed.exe ImageMagick-Windows\VisualMagick\bin
         CloneRepositories.cmd https://github.com/ImageMagick shallow
 
 #    - name: Download ChangeLog.md
@@ -58,7 +59,7 @@ jobs:
 #        name: ChangeLog
 #        path: ImageMagick-Windows\ImageMagick
 
-    - name: Download FFmpeg and sed
+    - name: Download FFmpeg
       shell: cmd
       run: |
         powershell Invoke-WebRequest -Uri https://github.com/ImageMagick/ImageMagick-Windows/releases/download/20200615/ffmpeg-4.2.3-win${{matrix.bit}}.exe -OutFile ffmpeg.exe
